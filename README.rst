@@ -1,4 +1,4 @@
-﻿megaplanpy
+megaplanpy
 ==========
 
 The library support only JSON format.
