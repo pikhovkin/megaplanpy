@@ -3,7 +3,7 @@ megaplanpy
 
 The library support only JSON format.
 
-Supports the API version of 2011.04+
+Supports the API version of 2011.05+
 
 Example usage
 -------------
