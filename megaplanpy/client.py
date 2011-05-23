@@ -1,4 +1,7 @@
-﻿#-------------------------------------------------------------------------------
+#!/usr/bin/env python
+# -*- coding: UTF-8 -*-
+
+#-------------------------------------------------------------------------------
 # Name:        client
 # Purpose:
 #
@@ -8,8 +11,6 @@
 # Copyright:   (c) Sergey Pikhovkin 2011
 # Licence:     <MIT>
 #-------------------------------------------------------------------------------
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
 
 import httplib
 from urlparse import urlparse, ParseResult
@@ -38,7 +39,6 @@ class APIClient(object):
     def __init__(self):
         self.Status = int(0)
         self.Reason = str()
-    # /
 
     def _get_scheme(self, uri):
         if not uri.scheme or (uri.scheme == 'http'):
@@ -48,7 +48,6 @@ class APIClient(object):
         else:
             raise UnsupportedScheme(
                 '"{0}" is not supported.'.format(uri.scheme))
-    # /
 
     def _get_port(self, uri):
         host = ''
@@ -61,7 +60,6 @@ class APIClient(object):
             if not port:
                 port = None
         return (host, port)
-    # /
 
     def _get_connection(self, uri):
         """Opens a socket connection to the server to set up an HTTP request.
@@ -77,7 +75,6 @@ class APIClient(object):
         else:
             connection = httplib.HTTPConnection(host, port)
         return connection
-    # /
 
     def _http_request(self, uri, params='', headers={}):
         if isinstance(uri, (str, unicode)):
@@ -116,7 +113,6 @@ class APIClient(object):
             connection.send(params)
 
         return connection.getresponse()
-    # /
 
     def Request(self, url, params={}, headers={}):
         """
@@ -132,9 +128,6 @@ class APIClient(object):
         self.Reason = response.reason
 
         return response.read()
-    # /
-
-# / class APIClient(object):
 
 
 def main():
