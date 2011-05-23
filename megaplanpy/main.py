@@ -1,4 +1,7 @@
-﻿#-------------------------------------------------------------------------------
+#!/usr/bin/env python
+# -*- coding: UTF-8 -*-
+
+#-------------------------------------------------------------------------------
 # Name:        main
 # Purpose:
 #
@@ -8,18 +11,17 @@
 # Copyright:   (c) Sergey Pikhovkin 2011
 # Licence:     MIT
 #-------------------------------------------------------------------------------
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
 
-import md5, hmac
+import md5
+import hmac
 from hashlib import sha1
 import base64
 from datetime import datetime
 from rfc822 import formatdate, mktime_tz, parsedate_tz
 from urllib import urlencode
+import json
 
 from client import APIClient
-from data import JSON2Obj
 
 
 class AttributeError(Exception):
@@ -28,6 +30,11 @@ class AttributeError(Exception):
 
 class ClientError(Exception):
     pass
+
+
+class JSON2Obj(object):
+    def __init__(self, page):
+        self.__dict__ = json.loads(page)
 
 
 class Megaplan(object):
@@ -42,17 +49,22 @@ class Megaplan(object):
     _ProjectApi = 'BumsProjectApiV01/'
     _StaffApi = 'BumsStaffApiV01/'
     _TaskApi = 'BumsTaskApiV01/'
+    _TimeApi = 'BumsTimeApiV01/'
+    _TradeApi = 'BumsTradeApiV01/'
 
     AUTHORIZE = _CommonApi + 'User/'
     COMMENT = _CommonApi + 'Comment/'
+    DEAL = _TradeApi + 'Deal/'
     DEPARTMENT = _StaffApi + 'Department/'
     EMPLOYEE = _StaffApi + 'Employee/'
+    EVENT = _TimeApi + 'Event/'
     FAVORITE = _CommonApi + 'Favorite/'
     INFORMER = _CommonApi + 'Informer/'
     PROJECT = _ProjectApi + 'Project/'
     SEARCH = _CommonApi + 'Search/'
     SEVERITY = _TaskApi + 'Severity/'
     TASK = _TaskApi + 'Task/'
+    TODOLIST = _TimeApi + 'TodoList/'
 
     code = 'utf-8'
 
@@ -100,16 +112,11 @@ class Megaplan(object):
 
         self._AccessId = str()
         self._SecretKey = str()
-    # / def __init__(self):
 
     def _TimeAsRfc822(self, dt):
         return formatdate(mktime_tz(parsedate_tz(dt.strftime('%a, %d %b %Y %H:%M:%S'))))
-    # /
 
     def _GetResponseObject(f):
-        """
-        Decorator
-        """
         def wrapper(self):
             obj = JSON2Obj(self._data)
             if 'error' == obj.status['code']:
@@ -118,7 +125,6 @@ class Megaplan(object):
             return f(self, obj)
 
         return wrapper
-    # / def _GetResponseObject(f):
 
     @_GetResponseObject
     def _AuthorizeHandle(self, obj):
@@ -127,7 +133,6 @@ class Megaplan(object):
 
         if self.debug:
             self._MPQuery = 'http://{host}'.format(host=self._host) + '{uri}'
-    # /
 
     def _Authorize(self):
         uri = self.AUTHORIZE + 'authorize.api'
@@ -143,7 +148,6 @@ class Megaplan(object):
                 self._Authorize()
             return f(self, *args, **kwargs)
         return wrapper
-    # /
 
     def _GetSignature(self, method, uri, params={}):
         self._rfcdate = self._TimeAsRfc822(datetime.now())
@@ -163,7 +167,6 @@ class Megaplan(object):
         q = self.SIGNATURE.format(**sign)
         h = hmac.HMAC(self._SecretKey.encode(self.code), q, sha1)
         return base64.encodestring(h.hexdigest()).strip()
-    # /
 
     def _GetHeaders(self, uri, params={}):
         method = 'GET'
@@ -186,12 +189,10 @@ class Megaplan(object):
         elif method == 'POST':
             header['Content-MD5'] = self._md5content
         return header
-    # /
 
     @_GetResponseObject
     def _ResponseHandle(self, obj):
         return obj
-    # /
 
     @_Auth
     def _GetData(self, uri, params={}):
@@ -202,7 +203,9 @@ class Megaplan(object):
             raise ClientError(
                 '{0} {1}'.format(self._client.Status, self._client.Reason))
         return self._ResponseHandle()
-    # /
+
+    def GetData(self):
+        return self._data
 
     def Tasks(self, Folder='all', Status='any', FavoritesOnly=False, Search=''):
         """
@@ -238,7 +241,6 @@ class Megaplan(object):
         uri = '{0}list.api?Folder={1}&Status={2}&FavoritesOnly={3}&Search={4}'
         uri = uri.format(self.TASK, Folder, Status, int(FavoritesOnly), Search)
         return self._GetData(uri)
-    # /
 
     def TaskCard(self, Id):
         """
@@ -268,7 +270,6 @@ class Megaplan(object):
         """
         uri = '{0}card.api?Id={1}'.format(self.TASK, Id)
         return self._GetData(uri)
-    # /
 
     def TaskCreate(self, **kwargs):
         """
@@ -294,7 +295,6 @@ class Megaplan(object):
         """
         uri = '{0}create.api'.format(self.TASK)
         return self._GetData(uri, kwargs)
-    # /
 
     def TaskEdit(self, Id, **kwargs):
         """
@@ -320,7 +320,6 @@ class Megaplan(object):
         uri = '{0}edit.api'.format(self.TASK)
         kwargs['Id'] = str(Id)
         self._GetData(uri, kwargs)
-    # /
 
     def TaskAction(self, Id, Action):
         """
@@ -343,7 +342,6 @@ class Megaplan(object):
         uri = '{0}action.api'.format(self.TASK)
         params = {'Id': str(Id), 'Action': Action}
         return self._GetData(uri, params)
-    # /
 
     def TaskAvailableActions(self, Id):
         """
@@ -365,7 +363,6 @@ class Megaplan(object):
         """
         uri = '{0}availableActions.api?Id={1}'.format(self.TASK, Id)
         return self._GetData(uri)
-    # /
 
     def TaskMarkAsFavorite(self, Id, Value=True):
         """
@@ -380,7 +377,6 @@ class Megaplan(object):
             self.FavoriteAdd('task', Id)
         else:
             self.FavoriteRemove('task', Id)
-    # /
 
     def Projects(self, Folder='all', Status='any', FavoritesOnly=False, Search=''):
         """
@@ -415,7 +411,6 @@ class Megaplan(object):
         uri = '{0}list.api?Folder={1}&Status={2}&FavoritesOnly={3}&Search={4}'
         uri = uri.format(self.PROJECT, Folder, Status, int(FavoritesOnly), Search)
         return self._GetData(uri)
-    # /
 
     def ProjectCard(self, Id):
         """
@@ -446,7 +441,6 @@ class Megaplan(object):
         """
         uri = '{0}card.api?Id={1}'.format(self.PROJECT, Id)
         return self._GetData(uri)
-    # /
 
     def ProjectCreate(self, **kwargs):
         """
@@ -482,7 +476,6 @@ class Megaplan(object):
         """
         uri = '{0}create.api'.format(self.PROJECT)
         return self._GetData(uri, kwargs)
-    # /
 
     def ProjectEdit(self, Id, **kwargs):
         """
@@ -507,7 +500,6 @@ class Megaplan(object):
         uri = '{0}edit.api'.format(self.PROJECT)
         kwargs['Id'] = str(Id)
         self._GetData(uri, kwargs)
-    # /
 
     def ProjectAction(self, Id, Action):
         """
@@ -528,7 +520,6 @@ class Megaplan(object):
         uri = '{0}action.api'.format(self.PROJECT)
         params = {'Id': str(Id), 'Action': Action}
         return self._GetData(uri, params)
-    # /
 
     def ProjectAvailableActions(self, Id):
         """
@@ -549,7 +540,6 @@ class Megaplan(object):
         """
         uri = '{0}availableActions.api?Id={1}'.format(self.PROJECT, Id)
         return self._GetData(uri)
-    # /
 
     def ProjectMarkAsFavorite(self, Id, Value=True):
         """
@@ -564,7 +554,6 @@ class Megaplan(object):
             self.FavoriteAdd('project', Id)
         else:
             self.FavoriteRemove('project', Id)
-    # /
 
     def Severities(self):
         """
@@ -576,7 +565,6 @@ class Megaplan(object):
         """
         uri = '{0}list.api'.format(self.SEVERITY)
         return self._GetData(uri)
-    # /
 
     def Employees(self, Department=0, OrderBy='name', OrderDir='asc'):
         """
@@ -602,7 +590,6 @@ class Megaplan(object):
         uri = '{0}list.api?Department={1}&OrderBy={2}&OrderDir={3}'
         uri = uri.format(self.EMPLOYEE, Department, OrderBy, OrderDir)
         return self._GetData(uri)
-    # /
 
     def EmployeeCard(self, Id):
         """
@@ -643,7 +630,6 @@ class Megaplan(object):
         """
         uri = '{0}card.api?Id={1}'.format(self.EMPLOYEE, Id)
         return self._GetData(uri)
-    # /
 
     def EmployeeCreate(self, **kwargs):
         """
@@ -675,7 +661,6 @@ class Megaplan(object):
         """
         uri = '{0}create.api'.format(self.EMPLOYEE)
         return self._GetData(uri, kwargs)
-    # /
 
     def EmployeeEdit(self, Id, **kwargs):
         """
@@ -708,7 +693,6 @@ class Megaplan(object):
         uri = '{0}edit.api'.format(self.EMPLOYEE)
         kwargs['Id'] = str(Id)
         self._GetData(uri, kwargs)
-    # /
 
     def EmployeeAvailableActions(self, Id):
         """
@@ -723,7 +707,6 @@ class Megaplan(object):
         """
         uri = '{0}availableActions.api?Id={1}'.format(self.EMPLOYEE, Id)
         return self._GetData(uri)
-    # /
 
     def Departments(self):
         """
@@ -739,7 +722,6 @@ class Megaplan(object):
         """
         uri = '{0}list.api'.format(self.DEPARTMENT)
         return self._GetData(uri)
-    # /
 
     def Comments(self, SubjectType, SubjectId, Order='asc'):
         """
@@ -767,7 +749,6 @@ class Megaplan(object):
         uri = '{0}list.api?SubjectType={1}&SubjectId={2}&Order={3}'
         uri = uri.format(self.COMMENT, SubjectType, SubjectId, Order)
         return self._GetData(uri)
-    # /
 
     def CommentCreate(self, SubjectType, SubjectId, **kwargs):
         """
@@ -803,7 +784,6 @@ class Megaplan(object):
         kwargs['SubjectId'] = str(SubjectId)
         kwargs['SubjectType'] = SubjectType
         return self._GetData(uri, kwargs)
-    # /
 
     def Favorites(self):
         """
@@ -817,7 +797,6 @@ class Megaplan(object):
         """
         uri = '{0}list.api'.format(self.FAVORITE)
         return self._GetData(uri)
-    # /
 
     def FavoriteAdd(self, SubjectType, SubjectId):
         """
@@ -834,7 +813,6 @@ class Megaplan(object):
         uri = '{0}add.api'.format(self.FAVORITE)
         params = {'SubjectId': str(SubjectId), 'SubjectType': SubjectType}
         self._GetData(uri, params)
-    # /
 
     def FavoriteRemove(self, SubjectType, SubjectId):
         """
@@ -851,7 +829,6 @@ class Megaplan(object):
         uri = '{0}remove.api'.format(self.FAVORITE)
         params = {'SubjectId': str(SubjectId), 'SubjectType': SubjectType}
         self._GetData(uri, params)
-    # /
 
     def Search(self, qs):
         """
@@ -870,7 +847,6 @@ class Megaplan(object):
         uri = '{0}quick.api'.format(self.SEARCH)
         params = {'qs': qs}
         return self._GetData(uri, params)
-    # /
 
     def Notifications(self):
         """
@@ -905,7 +881,6 @@ class Megaplan(object):
         """
         uri = '{0}notifications.api'.format(self.INFORMER)
         return self._GetData(uri)
-    # /
 
     def NotificationDeactivate(self, Id):
         """
@@ -917,7 +892,6 @@ class Megaplan(object):
         uri = '{0}deactivateNotification.api'.format(self.INFORMER)
         params = {'Id': str(Id)}
         self._GetData(uri, params)
-    # /
 
     def Approvals(self):
         """
@@ -929,9 +903,83 @@ class Megaplan(object):
         """
         uri = '{0}approvals.api'.format(self.INFORMER)
         return self._GetData(uri)
-    # /
 
-# / class Megaplan(object):
+    def TodoLists(self):
+        """
+        input:
+            None
+        output:
+            Id: integer # Id списка дел
+            Name: string # Название списка дел
+            TodoCount: integer # Количество незавершенных дел в списке
+        """
+        uri = '{0}list.api'.format(self.TODOLIST)
+        return self._GetData(uri)
+
+    def TodoListCreate(self, Name):
+        """
+        input:
+            Name: string # Название списка дел
+        output:
+            Id: integer # Id созданного списка
+        """
+        uri = '{0}create.api'.format(self.TODOLIST)
+        params = {'Name': Name}
+        return self._GetData(uri, params)
+
+    def TodoListEdit(self, Id, Name):
+        """
+        input:
+            Id: integer # Id списка дел
+            Name: string # Новое имя списка
+        output:
+            Id: integer # Id измененного списка
+        """
+        uri = '{0}edit.api'.format(self.TODOLIST)
+        params = {'Id': Id, 'Name': Name}
+        return self._GetData(uri, params)
+
+    def TodoListDelete(self, Id):
+        """
+        input:
+            Id: integer # Id списка дел
+        output:
+            Id: integer # Id удаленного списка
+        """
+        uri = '{0}delete.api'.format(self.TODOLIST)
+        params = {'Id': Id}
+        return self._GetData(uri, params)
+
+    def Events(self):
+        """
+        input:
+            None
+        output:
+            Id: integer # Id события
+            Name: string # Название события
+            TimeCreated: datetime # Дата и время создания
+            StartTime: datetime# Начало события
+            Duration: integer # Продолжительность события
+            IsPersonal: boolean # Личное дело?
+            EventCategory: string # Категория события
+            Participants: array # Список участников
+            Contractors: array # Список контрагентов
+            HasTodo: boolean # Имеет дела?
+            HasCommunication: boolean # Имеет коммуникации?
+        """
+        uri = '{0}list.api'.format(self.EVENT)
+        return self._GetData(uri)
+
+    def FromOnlineStoreCreate(self, CommerceInfo):
+        """
+        input:
+            CommerceInfo: string # Данные в формате CommerceML 2.
+        output:
+            Deals: array # Идентификаторы сделок, созданные в системе
+        """
+        uri = '{0}createFromOnlineStore.api'.format(self.DEAL)
+        params = {'CommerceInfo': CommerceInfo}
+        return self._GetData(uri, params)
 
 
 def main():
