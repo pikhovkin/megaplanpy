@@ -1,4 +1,4 @@
-﻿__version__ = '0.11.04'
+﻿__version__ = '0.11.05'
 
 __author__ = 'Sergey Pikhovkin <s@pikhovkin.ru>'
 
